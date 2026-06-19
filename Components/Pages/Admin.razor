@@ -1,0 +1,168 @@
+﻿@page "/admin"
+@using ChessAcademy.Data
+@using ChessAcademy.Models
+@using Microsoft.EntityFrameworkCore
+@inject IDbContextFactory<AppDbContext> DbFactory
+
+<PageTitle>Admin - Manage Games</PageTitle>
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Manage Games</h2>
+        <button class="btn btn-primary" @onclick="ShowAddForm">+ Add New Game</button>
+    </div>
+
+    <!-- Add/Edit Form -->
+    @if (showForm)
+    {
+        <div class="card p-4 mb-4 shadow-sm">
+            <h5>@(currentGame.Id == 0 ? "Add New Game" : "Edit Game")</h5>
+            <div class="row g-3 mt-1">
+                <div class="col-md-6">
+                    <label class="form-label">Player Name</label>
+                    <input type="text" class="form-control" @bind="currentGame.PlayerName" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Match Date</label>
+                    <input type="date" class="form-control" @bind="currentGame.MatchDate" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Opponent Name</label>
+                    <input type="text" class="form-control" @bind="currentGame.OpponentName" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Opponent Nationality</label>
+                    <input type="text" class="form-control" @bind="currentGame.OpponentNationality" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Result</label>
+                    <select class="form-select" @bind="currentGame.Result">
+                        <option value="Win">Win</option>
+                        <option value="Draw">Draw</option>
+                        <option value="Loss">Loss</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Opening</label>
+                    <input type="text" class="form-control" @bind="currentGame.Opening" />
+                </div>
+                <div class="col-12 mt-3">
+                    <button class="btn btn-success me-2" @onclick="SaveGame">Save Game</button>
+                    <button class="btn btn-secondary" @onclick="CancelForm">Cancel</button>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Games Table -->
+    <div class="table-responsive">
+        <table class="table table-hover table-striped align-middle">
+            <thead class="table-dark">
+                <tr>
+                    <th>Date</th>
+                    <th>Player</th>
+                    <th>Opponent</th>
+                    <th>Nat.</th>
+                    <th>Result</th>
+                    <th>Opening</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var game in games)
+                {
+                    <tr>
+                        <td>@game.MatchDate.ToString("yyyy-MM-dd")</td>
+                        <td>@game.PlayerName</td>
+                        <td>@game.OpponentName</td>
+                        <td>@game.OpponentNationality</td>
+                        <td>
+                            <span class="badge @(game.Result == "Win" ? "bg-success" : game.Result == "Draw" ? "bg-warning text-dark" : "bg-danger")">
+                                @game.Result
+                            </span>
+                        </td>
+                        <td>@game.Opening</td>
+                        <td class="text-end">
+                            <button class="btn btn-sm btn-outline-primary me-1" @onclick="() => EditGame(game)">Edit</button>
+                            <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteGame(game.Id)">Delete</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@code {
+    private List<Game> games = new();
+    private Game currentGame = new();
+    private bool showForm = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadGames();
+    }
+
+    private async Task LoadGames()
+    {
+        using var db = DbFactory.CreateDbContext();
+        games = await db.Games.OrderByDescending(g => g.MatchDate).ToListAsync();
+    }
+
+    private void ShowAddForm()
+    {
+        currentGame = new Game { MatchDate = DateTime.Now, Result = "Win" };
+        showForm = true;
+    }
+
+    private void EditGame(Game game)
+    {
+        // Create a copy to avoid editing the list directly before saving
+        currentGame = new Game
+            {
+                Id = game.Id,
+                PlayerName = game.PlayerName,
+                MatchDate = game.MatchDate,
+                OpponentName = game.OpponentName,
+                OpponentNationality = game.OpponentNationality,
+                Result = game.Result,
+                Opening = game.Opening
+            };
+        showForm = true;
+    }
+
+    private void CancelForm()
+    {
+        showForm = false;
+    }
+
+    private async Task SaveGame()
+    {
+        using var db = DbFactory.CreateDbContext();
+
+        if (currentGame.Id == 0)
+        {
+            db.Games.Add(currentGame);
+        }
+        else
+        {
+            db.Games.Update(currentGame);
+        }
+
+        await db.SaveChangesAsync();
+        showForm = false;
+        await LoadGames();
+    }
+
+    private async Task DeleteGame(int id)
+    {
+        using var db = DbFactory.CreateDbContext();
+        var game = await db.Games.FindAsync(id);
+        if (game != null)
+        {
+            db.Games.Remove(game);
+            await db.SaveChangesAsync();
+            await LoadGames();
+        }
+    }
+}

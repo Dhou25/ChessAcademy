@@ -1,0 +1,106 @@
+﻿@page "/"
+@rendermode InteractiveServer
+@using ChessAcademy.Data
+@using ChessAcademy.Models
+@using Microsoft.EntityFrameworkCore
+@inject IDbContextFactory<AppDbContext> DbFactory
+@inject IJSRuntime JS
+
+<PageTitle>Chess Academy Dashboard</PageTitle>
+
+<!-- Header -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold mb-0"><i class="bi bi-graph-up-arrow me-2"></i>Academy Dashboard</h2>
+        <p class="text-muted mb-0">Real-time performance metrics</p>
+    </div>
+    <button class="btn btn-outline-primary" @onclick="LoadData">
+        <i class="bi bi-arrow-clockwise me-1"></i> Refresh Data
+    </button>
+</div>
+
+<!-- Summary Cards -->
+<div class="row g-4 mb-4">
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-journal-text display-4 text-primary mb-2"></i>
+                <h3 class="fw-bold text-primary mb-0">@totalGames</h3>
+                <p class="text-muted mb-0">Total Games Played</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-people-fill display-4 text-success mb-2"></i>
+                <h3 class="fw-bold text-success mb-0">@totalPlayers</h3>
+                <p class="text-muted mb-0">Active Players</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-trophy-fill display-4 text-warning mb-2"></i>
+                <h3 class="fw-bold text-warning mb-0">@winPercentage%</h3>
+                <p class="text-muted mb-0">Overall Win Rate</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Pie Chart Section -->
+<div class="row">
+    <div class="col-md-8 offset-md-2">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-0 pt-3">
+                <h5 class="fw-bold mb-0"><i class="bi bi-pie-chart-fill me-2"></i>Game Results Distribution</h5>
+                <small class="text-muted">Based on Academy Player's perspective</small>
+            </div>
+            <div class="card-body">
+                <div style="height: 350px; position: relative;">
+                    <canvas id="resultsPieChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private int totalGames = 0;
+    private int totalPlayers = 0;
+    private double winPercentage = 0;
+    private List<Game> games = new();
+
+    // 1. Fetch data on initialization
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        using var db = DbFactory.CreateDbContext();
+        games = await db.Games.ToListAsync();
+
+        totalGames = games.Count;
+        totalPlayers = games.Select(g => g.PlayerName).Distinct().Count();
+
+        int wins = games.Count(g => g.Result == "Win");
+        winPercentage = totalGames > 0 ? Math.Round((double)wins / totalGames * 100, 1) : 0;
+    }
+
+    // 2. Render JS charts ONLY after the HTML is fully drawn
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            int wins = games.Count(g => g.Result == "Win");
+            int draws = games.Count(g => g.Result == "Draw");
+            int losses = games.Count(g => g.Result == "Loss");
+
+            await JS.InvokeVoidAsync("chessCharts.renderResultsPie", "resultsPieChart", wins, draws, losses);
+        }
+    }
+}

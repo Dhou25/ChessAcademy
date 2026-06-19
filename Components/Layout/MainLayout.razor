@@ -1,0 +1,27 @@
+﻿@inherits LayoutComponentBase
+
+<div class="page">
+    <!-- Top Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
+        <div class="container">
+            <a class="navbar-brand fw-bold text-white" href="/">
+                ♜ Chess Academy
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/">
+                    <i class="bi bi-speedometer2 me-1"></i> Dashboard
+                </a>
+                <a class="nav-link" href="/admin">
+                    <i class="bi bi-gear-fill me-1"></i> Admin CRUD
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="bg-light min-vh-100">
+        <div class="container py-4">
+            @Body
+        </div>
+    </main>
+</div>
